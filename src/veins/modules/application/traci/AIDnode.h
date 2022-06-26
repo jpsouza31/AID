@@ -23,7 +23,6 @@
 #pragma once
 
 #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
-#include <vector>
 
 namespace veins {
 
@@ -41,7 +40,7 @@ namespace veins {
  *
  */
 
-class VEINS_API TraCIDemo11p : public DemoBaseApplLayer {
+class VEINS_API AIDnode : public DemoBaseApplLayer {
 public:
     void initialize(int stage) override;
 
@@ -49,10 +48,6 @@ protected:
     simtime_t lastDroveAt;
     bool sentMessage;
     int currentSubscribedServiceId;
-    int c;
-    int s;
-    simtime_t t;
-    std::vector<simtime_t> l;
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
