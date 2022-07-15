@@ -23,6 +23,7 @@
 #pragma once
 
 #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
+#include "veins/modules/application/traci/TraCIDemo11pMessage_m.h"
 #include <vector>
 
 namespace veins {
@@ -60,6 +61,8 @@ protected:
 
     void handleSelfMsg(cMessage* msg) override;
     void handlePositionUpdate(cObject* obj) override;
+    TraCIDemo11pMessage* createMessage (int to, int senderId, std::string dado);
+    void createAndSendMessage (int to, int senderId);
 };
 
 } // namespace veins
