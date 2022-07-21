@@ -54,6 +54,9 @@ protected:
     int s;
     simtime_t t;
     std::vector<simtime_t> l;
+    int rsuIds[7];
+    int messageSendInterval;
+    simtime_t timeToSendMessage;
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
@@ -61,8 +64,8 @@ protected:
 
     void handleSelfMsg(cMessage* msg) override;
     void handlePositionUpdate(cObject* obj) override;
-    TraCIDemo11pMessage* createMessage (int to, int senderId, std::string dado);
-    void createAndSendMessage (int to, int senderId);
+    TraCIDemo11pMessage* createMessage (int to, int senderId, std::string dado, simtime_t beginTime);
+    void createAndSendMessage (int to, int senderId, simtime_t beginTime);
 };
 
 } // namespace veins

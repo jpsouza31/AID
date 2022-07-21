@@ -29,20 +29,24 @@ using namespace veins;
 
 Define_Module(veins::TraCIDemo11p);
 
-TraCIDemo11pMessage* TraCIDemo11p::createMessage (int to, int senderId, std::string dado) {
+TraCIDemo11pMessage* TraCIDemo11p::createMessage (int to, int senderId, std::string dado, simtime_t beginTime = NULL) {
     TraCIDemo11pMessage* wsm = new TraCIDemo11pMessage();
     populateWSM(wsm, -1);
     wsm->setSerial(to);
     wsm->setSenderAddress(senderId);
     wsm->setDemoData(dado.c_str());
+    if (beginTime == NULL)
+        wsm->setBeginTime(simTime());
+    else
+        wsm->setBeginTime(beginTime);
     return wsm;
 }
 
-void TraCIDemo11p::createAndSendMessage (int to, int senderId) {
+void TraCIDemo11p::createAndSendMessage (int to, int senderId, simtime_t beginTime = NULL) {
     std::string dado = "Mensagem para o node " + std::to_string(to);
-    TraCIDemo11pMessage* wsm = createMessage(12, myId, dado);
+    TraCIDemo11pMessage* wsm = createMessage(to, myId, dado, beginTime);
     sendDown(wsm);
-    std::cout << "## Enviado a mensagem para o " << to << endl;
+//    std::cout << "## Enviado a mensagem para o " << to << endl;
 }
 
 void TraCIDemo11p::initialize(int stage)
@@ -55,6 +59,15 @@ void TraCIDemo11p::initialize(int stage)
         c = 0;
         s = 0;
         t = 0;
+        messageSendInterval = 20;
+        timeToSendMessage = simTime() + messageSendInterval;
+        rsuIds[0] = 16;
+        rsuIds[1] = 26;
+        rsuIds[2] = 21;
+        rsuIds[3] = 31;
+        rsuIds[4] = 41;
+        rsuIds[5] = 36;
+        rsuIds[6] = 46;
     }
 }
 
@@ -73,7 +86,7 @@ void TraCIDemo11p::onWSA(DemoServiceAdvertisment* wsa)
 void TraCIDemo11p::onWSM(BaseFrame1609_4* frame)
 {
     TraCIDemo11pMessage* wsm = check_and_cast<TraCIDemo11pMessage*>(frame);
-    std::cout << "##" << wsm->getDemoData() << ", sou o node : " << myId << " no tempo: " << simTime() << endl;
+//    std::cout << "##" << wsm->getDemoData() << ", sou o node : " << myId << " no tempo: " << simTime() << endl;
     if ( myId == wsm->getSerial() ) {
         std::cout << "######### MENSAGEM RECEBIDA - Sou o node " << myId << endl;
     } else {
@@ -82,11 +95,9 @@ void TraCIDemo11p::onWSM(BaseFrame1609_4* frame)
             s = 0;
             t = simTime();
 
-            TraCIDemo11pMessage* newWsm = createMessage(wsm->getSerial(), myId, wsm->getDemoData());
-            std::cout << "## Agendando a mensagem!!" << endl;
-            scheduleAt(simTime() + 1, newWsm);
+            TraCIDemo11pMessage* newWsm = createMessage(wsm->getSerial(), myId, wsm->getDemoData(), wsm->getBeginTime());
+            scheduleAt(simTime() + 0.1, newWsm);
         } else {
-            std::cout << "## Mesma mensagem recebida novamente" << endl;
             c++;
             simtime_t t1 = simTime();
             l.push_back(t1 - t);
@@ -97,18 +108,18 @@ void TraCIDemo11p::onWSM(BaseFrame1609_4* frame)
 
 void TraCIDemo11p::handleSelfMsg(cMessage* msg)
 {
-    std::cout << "## Entrei aqui e o valor de c ficou em " << c << endl;
+//    std::cout << "## Entrei aqui e o valor de c ficou em " << c << endl;
     TraCIDemo11pMessage* wsm = dynamic_cast<TraCIDemo11pMessage*>(msg);
     if (c == 0) {
-        TraCIDemo11pMessage* newWsm = createMessage(wsm->getSerial(), myId, wsm->getDemoData());
+        TraCIDemo11pMessage* newWsm = createMessage(wsm->getSerial(), myId, wsm->getDemoData(), wsm->getBeginTime());
         t = 0;
         s = 0;
         l.clear();
         sendDown(newWsm);
-        std::cout << "## Reenviado a mensagem para o 12" << endl;
+//        std::cout << "## Reenviado a mensagem" << endl;
     } else {
-        std::cout << "## Mais de uma mensagem foi recebida" << endl;
-        simtime_t interArrivalTimeBase = 1 / c;
+//        std::cout << "## Mais de uma mensagem foi recebida" << endl;
+        simtime_t interArrivalTimeBase = 0.1 / c;
         for(std::vector<simtime_t>::iterator i = l.begin(); i != l.end(); i++) {
             if (interArrivalTimeBase - (*i) > 0) {
                 s--;
@@ -116,14 +127,14 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
                 s++;
             }
         }
-        std::cout << "## O Valor de s ficou em " << s <<endl;
+//        std::cout << "## O Valor de s ficou em " << s <<endl;
         if (s > 0) {
-            TraCIDemo11pMessage* newWsm = createMessage(wsm->getSerial(), myId, wsm->getDemoData());
+            TraCIDemo11pMessage* newWsm = createMessage(wsm->getSerial(), myId, wsm->getDemoData(), wsm->getBeginTime());
             t = 0;
             s = 0;
             l.clear();
             sendDown(newWsm);
-            std::cout << "## Reenviado a mensagem para o 12" << endl;
+            std::cout << "## Reenviado a mensagem AQUIII" << endl;
         }
     }
 }
@@ -131,46 +142,9 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
 void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 {
     DemoBaseApplLayer::handlePositionUpdate(obj);
-    if (myId == 28 && simTime() > 155 && simTime() < 157) {
-       createAndSendMessage(12, myId);
-    }
-    if (myId == 28 && simTime() > 155 && simTime() < 157) {
-       createAndSendMessage(52, myId);
-    }
-    if (myId == 34 && simTime() > 120 && simTime() < 122) {
-       createAndSendMessage(52, myId);
-    }
-    if (myId == 34 && simTime() > 160 && simTime() < 162) {
-       createAndSendMessage(12, myId);
-    }
-    if (myId == 58 && simTime() > 90 && simTime() < 92) {
-       createAndSendMessage(70, myId);
-    }
-    if (myId == 196 && simTime() > 155 && simTime() < 157) {
-       createAndSendMessage(124, myId);
-    }
-    if (myId == 106 && simTime() > 130 && simTime() < 132) {
-       createAndSendMessage(64, myId);
-    }
-    if (myId == 64 && simTime() > 170 && simTime() < 172) {
-       createAndSendMessage(190, myId);
-    }
-    if (myId == 328 && simTime() > 180 && simTime() < 182) {
-       createAndSendMessage(208, myId);
-    }
-    if (myId == 124 && simTime() > 190 && simTime() < 190) {
-       createAndSendMessage(382, myId);
-    }
-    if (myId == 166 && simTime() > 180 && simTime() < 182) {
-        createAndSendMessage(123, myId);
-    }
-    if (myId == 280 && simTime() > 160 && simTime() < 162) {
-        createAndSendMessage(172, myId);
-    }
-    if (myId == 100 && simTime() > 160 && simTime() < 161) {
-        createAndSendMessage(154, myId);
-    }
-    if (myId == 186 && simTime() > 130 && simTime() < 131) {
-        createAndSendMessage(52, myId);
+    if (myId % 4 == 0 && simTime() == timeToSendMessage) {
+        int rsuId = rsuIds[rand() % 7];
+        createAndSendMessage(rsuId, myId, NULL);
+        timeToSendMessage = timeToSendMessage + messageSendInterval;
     }
 }

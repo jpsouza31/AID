@@ -41,6 +41,9 @@ void TraCIDemoRSU11p::onWSM(BaseFrame1609_4* frame)
     TraCIDemo11pMessage* wsm = check_and_cast<TraCIDemo11pMessage*>(frame);
 
     if ( myId == wsm->getSerial() ) {
-        std::cout << "######### MENSAGEM RECEBIDA - Sou o node " << myId << endl;
+        wsm->setEndTime(simTime());
+        simtime_t delay = wsm->getEndTime() - wsm->getBeginTime();
+//        if (delay < 1)
+            std::cout << "###### Sou o node " << myId << " e recebi a mensagem com delay de ######" << delay << " no tempo: " << simTime() << endl;
     }
 }
