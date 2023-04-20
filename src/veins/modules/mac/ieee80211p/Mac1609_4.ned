@@ -58,7 +58,7 @@ simple Mac1609_4 extends BaseMacLayer
         double txPower @unit(mW);
 
         //the maximum queue size of an EDCA queue in the MAC. 0 for unlimited. Queue strategy is "drop if full"
-        int queueSize = default(0);
+        int queueSize = default(1024);
 
         // unicast parameters
         int dot11RTSThreshold @unit(bit) = default(12000bit);

@@ -63,12 +63,19 @@ protected:
     std::map<int, std::map<int, std::vector<simtime_t>>> lControlMap;
     int queueSize;
     int queue;
+    std::string nNos;
+    std::string qSize;
+//    cOutVector messageGeneratedCountVec;
+    std::string runNumber;
+    int stackOverflowNumber;
+
 
     int rsuIds[4];
     int messageSendInterval;
     simtime_t timeToSendMessage;
     int messageGeneratedCount;
     int replicatedMessagesCount;
+    int receivedMessagesCount;
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;

@@ -32,6 +32,9 @@ void TraCIDemoRSU11p::initialize(int stage)
 {
     DemoBaseApplLayer::initialize(stage);
     messageReceivedCount = 0;
+    nNos = "200";
+    qSize = "20000";
+    runNumber = std::to_string(getEnvir()->getConfigEx()->getActiveRunNumber());
 }
 
 void TraCIDemoRSU11p::finish()
@@ -39,7 +42,7 @@ void TraCIDemoRSU11p::finish()
     DemoBaseApplLayer::finish();
     std::ofstream out;
     std::cout << "CHEGOU ESSA QUANTIDADE DE MENSAGEM NO RSU " << myId << ": " << messageReceivedCount << endl;
-    out.open("/home/joao/Documentos/TCC/aid/resultados/300/entregues.txt", std::ios::app);
+    out.open("/home/joao/Documentos/TCC/aid/resultados/" + runNumber + "/entregues" + qSize + "_" + nNos + ".txt", std::ios::app);
     out << messageReceivedCount << std::endl;
     out.close();
 }
@@ -56,14 +59,19 @@ void TraCIDemoRSU11p::onWSM(BaseFrame1609_4* frame)
 {
     TraCIDemo11pMessage* wsm = check_and_cast<TraCIDemo11pMessage*>(frame);
     bool isValidMessage = true;
+//    std::cout << myId << " - AQUIIII: " << wsm->getSenderAddress() << " - " << wsm->getFinalAddress() << endl;
     if ( myId == wsm->getFinalAddress()) {
+//        std::cout << "CHEGOUUUUUUUUUUUU" << endl;
         std::vector<int> receivedMessages = receivedMessagesMap[wsm->getSenderAddress()];
         for (std::vector<int>::iterator id = receivedMessages.begin(); id != receivedMessages.end(); id++) {
             if (*id == wsm->getMessageId()) {
                 isValidMessage = false;
             }
         }
+//        std::cout << "OIIIIII: " << isValidMessage << endl;
         if (isValidMessage) {
+//            std::cout << "CHEGOU A MENSAGEM " << wsm->getMessageId() <<  " do no " << wsm->getSenderAddress() << " para a RSU: " << myId << " no tempo: " << simTime() << endl;
+//            std::cout << "OIIIIII 2: " << isValidMessage << endl;
             receivedMessages.push_back(wsm->getMessageId());
             receivedMessagesMap[wsm->getSenderAddress()] = receivedMessages;
             wsm->setEndTime(simTime());
@@ -71,8 +79,8 @@ void TraCIDemoRSU11p::onWSM(BaseFrame1609_4* frame)
             simtime_t delay = wsm->getEndTime() - wsm->getBeginTime();
 //            std::cout << "######" << delay << endl;
             std::ofstream out;
-            out.open("/home/joao/Documentos/TCC/aid/resultados/300/delay.txt", std::ios::app);
-            out << delay << std::endl;
+            out.open("/home/joao/Documentos/TCC/aid/resultados/" + runNumber + "/delay" + qSize + "_" + nNos + ".txt", std::ios::app);
+            out << delay << ';';
             out.close();
         }
     }

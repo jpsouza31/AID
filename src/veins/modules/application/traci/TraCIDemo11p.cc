@@ -28,12 +28,29 @@ using namespace veins;
 
 Define_Module(veins::TraCIDemo11p);
 
+void TraCIDemo11p::handlePositionUpdate(cObject* obj)
+{
+    DemoBaseApplLayer::handlePositionUpdate(obj);
+    if (myId % 4 == 0 && simTime() > 65 && simTime() == timeToSendMessage) {
+        messageGeneratedCount++;
+        int rsuId = rsuIds[rand() % 4];
+        createAndSendMessage(rsuId, myId, messageGeneratedCount, rsuId, NULL);
+        timeToSendMessage = timeToSendMessage + messageSendInterval;
+    }
+}
+
+void TraCIDemo11p::createAndSendMessage (int to, int senderId,  int messageId, int finalAddress, simtime_t beginTime = NULL) {
+    std::string dado = "Mensagem para o node " + std::to_string(to) + " enviado do " + std::to_string(myId);
+    TraCIDemo11pMessage* wsm = createMessage(to, senderId, dado, messageId, finalAddress, beginTime);
+    sendDown(wsm);
+}
+
 TraCIDemo11pMessage* TraCIDemo11p::createMessage (int to, int senderId, std::string dado,  int messageId, int finalAddress, simtime_t beginTime = NULL) {
     TraCIDemo11pMessage* wsm = new TraCIDemo11pMessage();
     populateWSM(wsm, -1);
     wsm->setFinalAddress(finalAddress);
     wsm->setSenderAddress(senderId);
-    wsm->setByteLength(100000);
+//    wsm->setByteLength(100000);
     wsm->setDemoData(dado.c_str());
     wsm->setMessageId(messageId);
     if (beginTime == NULL)
@@ -43,12 +60,6 @@ TraCIDemo11pMessage* TraCIDemo11p::createMessage (int to, int senderId, std::str
     return wsm;
 }
 
-void TraCIDemo11p::createAndSendMessage (int to, int senderId,  int messageId, int finalAddress, simtime_t beginTime = NULL) {
-    std::string dado = "Mensagem para o node " + std::to_string(to) + " enviado do " + std::to_string(myId);
-    TraCIDemo11pMessage* wsm = createMessage(to, senderId, dado, messageId, finalAddress, beginTime);
-    sendDown(wsm);
-}
-
 void TraCIDemo11p::initialize(int stage)
 {
     DemoBaseApplLayer::initialize(stage);
@@ -56,7 +67,7 @@ void TraCIDemo11p::initialize(int stage)
         sentMessage = false;
         lastDroveAt = simTime();
         currentSubscribedServiceId = -1;
-        messageSendInterval = 20;
+        messageSendInterval = 15;
         timeToSendMessage = simTime() + messageSendInterval;
         rsuIds[0] = 13;
         rsuIds[1] = 18;
@@ -64,22 +75,42 @@ void TraCIDemo11p::initialize(int stage)
         rsuIds[3] = 28;
         messageGeneratedCount = 0;
         replicatedMessagesCount = 0;
+        receivedMessagesCount = 0;
         queue = 0;
-        queueSize = 16000000;
+        queueSize = 20000;
+        nNos = "200";
+        qSize = "20000";
+//        messageGeneratedCountVec.setName("messageGeneratedCount");
+        runNumber = std::to_string(getEnvir()->getConfigEx()->getActiveRunNumber());
+        stackOverflowNumber = 0;
     }
 }
 
 void TraCIDemo11p::finish()
 {
     DemoBaseApplLayer::finish();
-    cancelEvent(newWsm);
+//    cancelEvent(newWsm);
+
+//    recordScalar("geradas", messageGeneratedCount);
+//    recordScalar("replicadas", replicatedMessagesCount);
+//    getSimulation()->getS
+
+//            std::cout << "AQUII " << getEnvir()->getConfigEx()->getActiveRunNumber() << endl;
+//    messageGeneratedCountVec.record(messageGeneratedCount);
+
 
     std::ofstream out;
-    out.open("/home/joao/Documentos/TCC/aid/resultados/300/geradas.txt", std::ios::app);
+    out.open("/home/joao/Documentos/TCC/aid/resultados/" + runNumber + "/geradas" + qSize + "_" + nNos + ".txt", std::ios::app);
     out << messageGeneratedCount << std::endl;
     out.close();
-    out.open("/home/joao/Documentos/TCC/aid/resultados/300/replicadas.txt", std::ios::app);
+    out.open("/home/joao/Documentos/TCC/aid/resultados/" + runNumber + "/replicadas" + qSize + "_" + nNos + ".txt", std::ios::app);
     out << replicatedMessagesCount << std::endl;
+    out.close();
+    out.open("/home/joao/Documentos/TCC/aid/resultados/" + runNumber + "/overflow" + qSize + "_" + nNos + ".txt", std::ios::app);
+    out << stackOverflowNumber << std::endl;
+    out.close();
+    out.open("/home/joao/Documentos/TCC/aid/resultados/" + runNumber + "/recebidas" + qSize + "_" + nNos + ".txt", std::ios::app);
+    out << receivedMessagesCount << std::endl;
     out.close();
 //    std::cout << "FOI GERADA ESSA QUANTIDADE DE MENSAGENS DO NODE " << myId << ": " << messageGeneratedCount << endl;
 //    std::cout << "FOI GERADA ESSA QUANTIDADE DE MENSAGENS REPLICADAS DO NODE " << myId << ": " << replicatedMessagesCount << endl;
@@ -100,43 +131,47 @@ void TraCIDemo11p::onWSA(DemoServiceAdvertisment* wsa)
 void TraCIDemo11p::onWSM(BaseFrame1609_4* frame)
 {
     TraCIDemo11pMessage* wsm = check_and_cast<TraCIDemo11pMessage*>(frame);
-//    std::cout << "AQUII " << wsm->getByteLength() << endl;
-    if (getCurrentQueueSize() + wsm->getByteLength() < getQueueSize()) {
-        addTaskSizeToQueue(wsm->getByteLength());
-        if (wsm->getBeginTime() + 0.5 > simTime()) {
-            if (wsm->getSenderAddress() != myId) {
-                std::map<int, int> cControl = cControlMap[wsm->getSenderAddress()];
-                std::map<int, int> sControl = sControlMap[wsm->getSenderAddress()];
-                std::map<int, simtime_t> tControl = tControlMap[wsm->getSenderAddress()];
-                std::map<int, std::vector<simtime_t>> lControl = lControlMap[wsm->getSenderAddress()];
-                int c = cControl[wsm->getMessageId()];
-                int s = sControl[wsm->getMessageId()];
-                simtime_t t = tControl[wsm->getMessageId()];
-                std::vector<simtime_t> l = lControl[wsm->getMessageId()];
+    if (wsm->getBeginTime() + 0.2 > simTime()) {
+        receivedMessagesCount++;
+        if (getCurrentQueueSize() + 1 < getQueueSize()) {
+            addTaskSizeToQueue(1);
+//            if (wsm->getBeginTime() + 0.5 > simTime()) {
+                if (wsm->getSenderAddress() != myId) {
+                    std::map<int, int> cControl = cControlMap[wsm->getSenderAddress()];
+                    std::map<int, int> sControl = sControlMap[wsm->getSenderAddress()];
+                    std::map<int, simtime_t> tControl = tControlMap[wsm->getSenderAddress()];
+                    std::map<int, std::vector<simtime_t>> lControl = lControlMap[wsm->getSenderAddress()];
+                    int c = cControl[wsm->getMessageId()];
+                    int s = sControl[wsm->getMessageId()];
+                    simtime_t t = tControl[wsm->getMessageId()];
+                    std::vector<simtime_t> l = lControl[wsm->getMessageId()];
 
-                if (t == NULL) t = 0;
+                    if (t == NULL) t = 0;
 
-                if (t == 0) {
-                    c = 1;
-                    s = 0;
-                    t = simTime();
-                    newWsm = createMessage(wsm->getSerial(), wsm->getSenderAddress(), wsm->getDemoData(), wsm->getMessageId(), wsm->getFinalAddress(), wsm->getBeginTime());
-                    //        sendDown(newWsm);
-                    delay = uniform(0, par("randomDelayTimeMax").doubleValue());
-                    scheduleAt(simTime() + delay, newWsm);
-                } else {
-                    c++;
-                    simtime_t t1 = simTime();
-                    l.push_back(t1 - t);
-                    t = t1;
+                    if (t == 0) {
+                        c = 1;
+                        s = 0;
+                        t = simTime();
+                        newWsm = createMessage(wsm->getSerial(), wsm->getSenderAddress(), wsm->getDemoData(), wsm->getMessageId(), wsm->getFinalAddress(), wsm->getBeginTime());
+                        //        sendDown(newWsm);
+                        delay = uniform(0, par("randomDelayTimeMax").doubleValue());
+                        scheduleAt(simTime() + delay, newWsm);
+                    } else {
+                        c++;
+                        simtime_t t1 = simTime();
+                        l.push_back(t1 - t);
+                        t = t1;
+                    }
+
+                    cControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = c;
+                    sControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = s;
+                    tControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = t;
+                    lControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = l;
                 }
-
-                cControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = c;
-                sControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = s;
-                tControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = t;
-                lControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = l;
-            }
-        }
+//            }
+        } else stackOverflowNumber++;
+    } else {
+//        std::cout << "AQUI"<< endl;
     }
 }
 
@@ -176,25 +211,16 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
             l.clear();
             sendDown(newWsm);
             replicatedMessagesCount++;
+        } else {
+//            std::cout << myId << " - DECIDI MÂO ENVIAR " << endl;
         }
     }
 
-    removeTaskSizeToQueue(wsm->getByteLength());
+    removeTaskSizeToQueue(1);
     cControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = c;
     sControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = s;
     tControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = t;
     lControlMap[wsm->getSenderAddress()][wsm->getMessageId()] = l;
-}
-
-void TraCIDemo11p::handlePositionUpdate(cObject* obj)
-{
-    DemoBaseApplLayer::handlePositionUpdate(obj);
-    if (myId % 5 == 0 && simTime() == timeToSendMessage) {
-        messageGeneratedCount++;
-        int rsuId = rsuIds[rand() % 4];
-        createAndSendMessage(rsuId, myId, messageGeneratedCount, rsuId, NULL);
-        timeToSendMessage = timeToSendMessage + messageSendInterval;
-    }
 }
 
 int TraCIDemo11p::getQueueSize() {
